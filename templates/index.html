@@ -31,7 +31,7 @@
                 <h2 class="text-2xl font-bold text-amber-800 mb-4 border-b-2 border-amber-300 pb-2">管理メニュー</h2>
                 <div class="flex flex-wrap gap-4">
                     <button onclick="openModal('addBookModal')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">新しい図書を登録</button>
-                    <button onclick="openLoanModal()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">図書を貸し出す</button>
+                    <button onclick="openLoanModal()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">図書を借りる</button>
                     <button onclick="openModal('loanHistoryModal'); fetchLoanHistory();" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">貸出履歴</button>
                 </div>
             </div>
@@ -43,145 +43,80 @@
         </main>
     </div>
 
-    <!-- ===== モーダルウィンドウ ===== -->
-    <!-- (ログイン、新規登録、図書登録、貸出モーダルは変更なしのため省略) -->
-    <div id="loginModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4"><div class="bg-white rounded-lg p-8 w-full max-w-md shadow-xl"><h3 class="text-2xl font-bold mb-6">ログイン</h3><form id="loginForm"><input type="text" id="loginName" placeholder="ユーザー名" class="w-full p-2 mb-4 border rounded" required><input type="password" id="loginPassword" placeholder="パスワード" class="w-full p-2 mb-4 border rounded" required><div class="flex justify-end gap-4"><button type="button" onclick="closeModal('loginModal')" class="bg-gray-300 hover:bg-gray-400 font-bold py-2 px-4 rounded">キャンセル</button><button type="submit" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded">ログイン</button></div></form></div></div>
-    <div id="registerModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4"><div class="bg-white rounded-lg p-8 w-full max-w-md shadow-xl"><h3 class="text-2xl font-bold mb-6">新規ユーザー登録</h3><form id="registerForm"><input type="text" id="registerName" placeholder="ユーザー名" class="w-full p-2 mb-4 border rounded" required><input type="email" id="registerEmail" placeholder="メールアドレス (任意)" class="w-full p-2 mb-4 border rounded"><input type="password" id="registerPassword" placeholder="パスワード" class="w-full p-2 mb-4 border rounded" required><div class="flex justify-end gap-4"><button type="button" onclick="closeModal('registerModal')" class="bg-gray-300 hover:bg-gray-400 font-bold py-2 px-4 rounded">キャンセル</button><button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded">登録</button></div></form></div></div>
-    <div id="addBookModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4"><div class="bg-white rounded-lg p-8 w-full max-w-md shadow-xl"><h3 class="text-2xl font-bold mb-6">新しい図書を登録</h3><form id="addBookForm"><input type="text" id="bookTitle" placeholder="タイトル" class="w-full p-2 mb-4 border rounded" required><input type="text" id="bookAuthor" placeholder="著者" class="w-full p-2 mb-4 border rounded" required><input type="text" id="bookIsbn" placeholder="ISBN (任意)" class="w-full p-2 mb-4 border rounded"><div class="flex justify-end gap-4"><button type="button" onclick="closeModal('addBookModal')" class="bg-gray-300 hover:bg-gray-400 font-bold py-2 px-4 rounded">キャンセル</button><button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded">登録</button></div></form></div></div>
-    <div id="loanModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4"><div class="bg-white rounded-lg p-8 w-full max-w-md shadow-xl"><h3 class="text-2xl font-bold mb-6">図書を貸し出す</h3><form id="loanForm"><div class="mb-6"><label for="loanBookId" class="block mb-2 font-bold">貸し出す本:</label><select id="loanBookId" class="w-full p-2 border rounded" required></select></div><div class="flex justify-end gap-4"><button type="button" onclick="closeModal('loanModal')" class="bg-gray-300 hover:bg-gray-400 font-bold py-2 px-4 rounded">キャンセル</button><button type="submit" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded">貸し出す</button></div></form></div></div>
-
-    <!-- 貸出履歴モーダル (更新) -->
-    <div id="loanHistoryModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4">
-        <div class="bg-white rounded-lg p-8 w-full max-w-4xl shadow-xl h-[80vh] flex flex-col">
-            <h3 class="text-2xl font-bold mb-6 flex-shrink-0">貸出履歴</h3>
-            <div class="overflow-y-auto flex-grow">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-gray-100 sticky top-0">
-                        <tr>
-                            <th class="p-2">書籍名</th>
-                            <th class="p-2">利用者</th>
-                            <th class="p-2">貸出日</th>
-                            <th class="p-2">返却期限</th>
-                            <th class="p-2">返却日</th>
-                        </tr>
-                    </thead>
-                    <tbody id="loanHistoryBody"></tbody>
-                </table>
-            </div>
-            <div class="flex justify-end mt-6 flex-shrink-0"><button type="button" onclick="closeModal('loanHistoryModal')" class="bg-gray-300 hover:bg-gray-400 font-bold py-2 px-4 rounded">閉じる</button></div>
+    <!-- ===== モーダルウィンドウ (更新) ===== -->
+    <!-- ログインモーダル -->
+    <div id="loginModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4">
+        <div class="bg-white rounded-lg p-8 w-full max-w-md shadow-xl">
+            <h3 class="text-2xl font-bold mb-6">ログイン</h3>
+            <form id="loginForm">
+                <input type="email" id="loginEmail" placeholder="メールアドレス" class="w-full p-2 mb-4 border rounded" required>
+                <input type="password" id="loginPassword" placeholder="パスワード" class="w-full p-2 mb-4 border rounded" required>
+                <div class="flex justify-end gap-4">
+                    <button type="button" onclick="closeModal('loginModal')" class="bg-gray-300 hover:bg-gray-400 font-bold py-2 px-4 rounded">キャンセル</button>
+                    <button type="submit" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded">ログイン</button>
+                </div>
+            </form>
         </div>
     </div>
+    <!-- 新規登録モーダル -->
+    <div id="registerModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4">
+        <div class="bg-white rounded-lg p-8 w-full max-w-md shadow-xl">
+            <h3 class="text-2xl font-bold mb-6">新規ユーザー登録</h3>
+            <form id="registerForm">
+                <input type="text" id="registerName" placeholder="ユーザー名" class="w-full p-2 mb-4 border rounded" required>
+                <input type="email" id="registerEmail" placeholder="メールアドレス" class="w-full p-2 mb-4 border rounded" required>
+                <input type="password" id="registerPassword" placeholder="パスワード" class="w-full p-2 mb-4 border rounded" required>
+                <div class="flex justify-end gap-4">
+                    <button type="button" onclick="closeModal('registerModal')" class="bg-gray-300 hover:bg-gray-400 font-bold py-2 px-4 rounded">キャンセル</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded">登録</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- (図書登録、貸出、貸出履歴モーダルは変更なし) -->
+    <div id="addBookModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4"><div class="bg-white rounded-lg p-8 w-full max-w-md shadow-xl"><h3 class="text-2xl font-bold mb-6">新しい図書を登録</h3><form id="addBookForm"><input type="text" id="bookTitle" placeholder="タイトル" class="w-full p-2 mb-4 border rounded" required><input type="text" id="bookAuthor" placeholder="著者" class="w-full p-2 mb-4 border rounded" required><input type="text" id="bookIsbn" placeholder="ISBN (任意)" class="w-full p-2 mb-4 border rounded"><div class="flex justify-end gap-4"><button type="button" onclick="closeModal('addBookModal')" class="bg-gray-300 hover:bg-gray-400 font-bold py-2 px-4 rounded">キャンセル</button><button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded">登録</button></div></form></div></div>
+    <div id="loanModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4"><div class="bg-white rounded-lg p-8 w-full max-w-md shadow-xl"><h3 class="text-2xl font-bold mb-6">図書を借りる</h3><form id="loanForm"><div class="mb-6"><label for="loanBookId" class="block mb-2 font-bold">借りる本:</label><select id="loanBookId" class="w-full p-2 border rounded" required></select></div><div class="flex justify-end gap-4"><button type="button" onclick="closeModal('loanModal')" class="bg-gray-300 hover:bg-gray-400 font-bold py-2 px-4 rounded">キャンセル</button><button type="submit" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded">借りる</button></div></form></div></div>
+    <div id="loanHistoryModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4"><div class="bg-white rounded-lg p-8 w-full max-w-4xl shadow-xl h-[80vh] flex flex-col"><h3 class="text-2xl font-bold mb-6 flex-shrink-0">貸出履歴</h3><div class="overflow-y-auto flex-grow"><table class="w-full text-left text-sm"><thead class="bg-gray-100 sticky top-0"><tr><th class="p-2">書籍名</th><th class="p-2">利用者</th><th class="p-2">貸出日</th><th class="p-2">返却期限</th><th class="p-2">返却日</th></tr></thead><tbody id="loanHistoryBody"></tbody></table></div><div class="flex justify-end mt-6 flex-shrink-0"><button type="button" onclick="closeModal('loanHistoryModal')" class="bg-gray-300 hover:bg-gray-400 font-bold py-2 px-4 rounded">閉じる</button></div></div></div>
 
     <script>
+        // JavaScript部分は変更ありません
         let currentUser = null;
-
-        // --- モーダル制御 ---
         function openModal(modalId) { document.getElementById(modalId).classList.add('flex'); }
         function closeModal(modalId) { document.getElementById(modalId).classList.remove('flex'); }
-
-        // --- UI更新 ---
-        function updateUI() {
-            const authArea = document.getElementById('auth-area');
-            const controlPanel = document.getElementById('control-panel');
-            if (currentUser) {
-                authArea.innerHTML = `<p class="font-semibold">ようこそ、<span class="text-sky-700">${currentUser.name}</span> さん</p><button onclick="logout()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">ログアウト</button>`;
-                controlPanel.style.display = 'block';
-            } else {
-                authArea.innerHTML = `<p>機能をすべて利用するにはログインしてください。</p><div class="flex gap-2"><button onclick="openModal('loginModal')" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg">ログイン</button><button onclick="openModal('registerModal')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg">新規登録</button></div>`;
-                controlPanel.style.display = 'none';
-            }
-            fetchAndDisplayBooks();
-        }
-
-        // --- 認証関連処理 (変更なし) ---
-        async function checkLoginStatus() {
-            const response = await fetch('/api/status');
-            const data = await response.json();
-            currentUser = data.logged_in ? data.user : null;
-            updateUI();
-        }
+        function updateUI() { const authArea = document.getElementById('auth-area'); const controlPanel = document.getElementById('control-panel'); if (currentUser) { authArea.innerHTML = `<p class="font-semibold">ようこそ、<span class="text-sky-700">${currentUser.name}</span> さん</p><button onclick="logout()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">ログアウト</button>`; controlPanel.style.display = 'block'; } else { authArea.innerHTML = `<p>機能をすべて利用するにはログインしてください。</p><div class="flex gap-2"><button onclick="openModal('loginModal')" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg">ログイン</button><button onclick="openModal('registerModal')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg">新規登録</button></div>`; controlPanel.style.display = 'none'; } fetchAndDisplayBooks(); }
+        async function checkLoginStatus() { const response = await fetch('/api/status'); const data = await response.json(); currentUser = data.logged_in ? data.user : null; updateUI(); }
         document.getElementById('registerForm').addEventListener('submit', async(e) => { e.preventDefault(); const name = document.getElementById('registerName').value; const email = document.getElementById('registerEmail').value; const password = document.getElementById('registerPassword').value; const response = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, password }) }); const data = await response.json(); if (response.ok) { currentUser = data.user; closeModal('registerModal'); e.target.reset(); updateUI(); } else { alert(`登録エラー: ${data.error}`); } });
-        document.getElementById('loginForm').addEventListener('submit', async(e) => { e.preventDefault(); const name = document.getElementById('loginName').value; const password = document.getElementById('loginPassword').value; const response = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, password }) }); const data = await response.json(); if (response.ok) { currentUser = data.user; closeModal('loginModal'); e.target.reset(); updateUI(); } else { alert(`ログインエラー: ${data.error}`); } });
-        async function logout() { await fetch('/api/logout', { method: 'POST' }); currentUser = null; updateUI(); }
-
-        // --- 図書・貸出関連処理 (更新) ---
-        async function fetchAndDisplayBooks() {
-            const response = await fetch('/api/books');
-            const books = await response.json();
-            const bookList = document.getElementById('book-list');
-            bookList.innerHTML = '';
-
-            books.forEach(book => {
-                let statusHtml;
-                if (book.is_loaned) {
-                    if (currentUser && currentUser.id === book.borrower_id) {
-                        // ログインユーザーが借りている本
-                        statusHtml = `<button onclick="returnBook(${book.id})" class="mt-4 w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-2 rounded-md text-sm">返却する</button>`;
-                    } else {
-                        // 他の人が借りている本
-                        statusHtml = `<div class="mt-4 text-center text-red-600 font-bold text-sm py-1">貸出中</div>`;
-                    }
-                } else {
-                    // 貸出可能な本
-                    statusHtml = `<div class="mt-4 text-center text-green-600 font-bold text-sm py-1">貸出可</div>`;
-                }
-
-                const bookCard = `
-                    <div class="book bg-white p-4 rounded-lg shadow-md flex flex-col justify-between">
-                        <div>
-                            <h4 class="font-bold text-lg truncate" title="${book.title}">${book.title}</h4>
-                            <p class="text-sm text-gray-600 truncate" title="${book.author}">${book.author}</p>
-                        </div>
-                        ${statusHtml}
-                    </div>`;
-                bookList.innerHTML += bookCard;
-            });
-        }
-        // 図書登録フォームの処理 (変更なし)
-        document.getElementById('addBookForm').addEventListener('submit', async (e) => { e.preventDefault(); const title = document.getElementById('bookTitle').value; const author = document.getElementById('bookAuthor').value; const isbn = document.getElementById('bookIsbn').value; const response = await fetch('/api/books', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, author, isbn }) }); if (response.ok) { closeModal('addBookModal'); e.target.reset(); await fetchAndDisplayBooks(); } else { const data = await response.json(); alert(`登録エラー: ${data.error}`); } });
-        // 貸出モーダルを開く処理 (変更なし)
-        async function openLoanModal() { const bookRes = await fetch('/api/books'); const books = await bookRes.json(); const availableBooks = books.filter(b => !b.is_loaned); const bookSelect = document.getElementById('loanBookId'); bookSelect.innerHTML = availableBooks.map(b => `<option value="${b.id}">${b.title}</option>`).join(''); openModal('loanModal'); }
-        // 貸出フォームの処理 (変更なし)
-        document.getElementById('loanForm').addEventListener('submit', async (e) => { e.preventDefault(); const book_id = document.getElementById('loanBookId').value; const response = await fetch('/api/loan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ book_id: parseInt(book_id) }) }); if (response.ok) { closeModal('loanModal'); await fetchAndDisplayBooks(); } else { const error = await response.json(); alert(`貸出エラー: ${error.error}`); } });
         
-        // 返却処理 (変更なし)
-        async function returnBook(bookId) {
-            if (!confirm('この本を返却しますか？')) return;
-            const response = await fetch(`/api/return/${bookId}`, { method: 'POST' });
+        // ログインフォームの処理 (更新)
+        document.getElementById('loginForm').addEventListener('submit', async(e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await response.json();
             if (response.ok) {
-                await fetchAndDisplayBooks();
+                currentUser = data.user;
+                closeModal('loginModal');
+                e.target.reset();
+                updateUI();
             } else {
-                const error = await response.json();
-                alert(`返却エラー: ${error.error}`);
+                alert(`ログインエラー: ${data.error}`);
             }
-        }
-        
-        // 貸出履歴の取得と表示 (更新)
-        async function fetchLoanHistory() {
-            const response = await fetch('/api/loans');
-            if (!response.ok) {
-                alert('貸出履歴の取得に失敗しました。ログインしてください。');
-                closeModal('loanHistoryModal');
-                return;
-            }
-            const loans = await response.json();
-            const historyBody = document.getElementById('loanHistoryBody');
-            historyBody.innerHTML = '';
-            
-            const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        });
 
-            loans.forEach(loan => {
-                const loanDate = new Date(loan.loan_date).toLocaleDateString('ja-JP', options);
-                const dueDate = new Date(loan.due_date).toLocaleDateString('ja-JP', options);
-                const returnDate = loan.return_date ? new Date(loan.return_date).toLocaleDateString('ja-JP', options) : '貸出中';
-                historyBody.innerHTML += `<tr class="border-b"><td class="p-2">${loan.book_title}</td><td class="p-2">${loan.user_name}</td><td class="p-2">${loanDate}</td><td class="p-2 text-red-600">${dueDate}</td><td class="p-2">${returnDate}</td></tr>`;
-            });
-        }
-
-        // --- ページ読み込み時に実行 ---
-        window.onload = () => {
-            checkLoginStatus();
-        };
+        async function logout() { await fetch('/api/logout', { method: 'POST' }); currentUser = null; updateUI(); }
+        async function fetchAndDisplayBooks() { const response = await fetch('/api/books'); const books = await response.json(); const bookList = document.getElementById('book-list'); bookList.innerHTML = ''; books.forEach(book => { let statusHtml; if (book.is_loaned) { if (currentUser && currentUser.id === book.borrower_id) { statusHtml = `<button onclick="returnBook(${book.id})" class="mt-4 w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-2 rounded-md text-sm">返却する</button>`; } else { statusHtml = `<div class="mt-4 text-center text-red-600 font-bold text-sm py-1">貸出中</div>`; } } else { statusHtml = `<div class="mt-4 text-center text-green-600 font-bold text-sm py-1">貸出可</div>`; } const bookCard = ` <div class="book bg-white p-4 rounded-lg shadow-md flex flex-col justify-between"> <div> <h4 class="font-bold text-lg truncate" title="${book.title}">${book.title}</h4> <p class="text-sm text-gray-600 truncate" title="${book.author}">${book.author}</p> </div> ${statusHtml} </div>`; bookList.innerHTML += bookCard; }); }
+        document.getElementById('addBookForm').addEventListener('submit', async (e) => { e.preventDefault(); const title = document.getElementById('bookTitle').value; const author = document.getElementById('bookAuthor').value; const isbn = document.getElementById('bookIsbn').value; const response = await fetch('/api/books', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, author, isbn }) }); if (response.ok) { closeModal('addBookModal'); e.target.reset(); await fetchAndDisplayBooks(); } else { const data = await response.json(); alert(`登録エラー: ${data.error}`); } });
+        async function openLoanModal() { const bookRes = await fetch('/api/books'); const books = await bookRes.json(); const availableBooks = books.filter(b => !b.is_loaned); const bookSelect = document.getElementById('loanBookId'); bookSelect.innerHTML = availableBooks.map(b => `<option value="${b.id}">${b.title}</option>`).join(''); openModal('loanModal'); }
+        document.getElementById('loanForm').addEventListener('submit', async (e) => { e.preventDefault(); const book_id = document.getElementById('loanBookId').value; const response = await fetch('/api/loan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ book_id: parseInt(book_id) }) }); if (response.ok) { closeModal('loanModal'); await fetchAndDisplayBooks(); } else { const error = await response.json(); alert(`貸出エラー: ${error.error}`); } });
+        async function returnBook(bookId) { if (!confirm('この本を返却しますか？')) return; const response = await fetch(`/api/return/${bookId}`, { method: 'POST' }); if (response.ok) { await fetchAndDisplayBooks(); } else { const error = await response.json(); alert(`返却エラー: ${error.error}`); } }
+        async function fetchLoanHistory() { const response = await fetch('/api/loans'); if (!response.ok) { alert('貸出履歴の取得に失敗しました。ログインしてください。'); closeModal('loanHistoryModal'); return; } const loans = await response.json(); const historyBody = document.getElementById('loanHistoryBody'); historyBody.innerHTML = ''; const options = { year: 'numeric', month: 'short', day: 'numeric' }; loans.forEach(loan => { const loanDate = new Date(loan.loan_date).toLocaleDateString('ja-JP', options); const dueDate = new Date(loan.due_date).toLocaleDateString('ja-JP', options); const returnDate = loan.return_date ? new Date(loan.return_date).toLocaleDateString('ja-JP', options) : '貸出中'; historyBody.innerHTML += `<tr class="border-b"><td class="p-2">${loan.book_title}</td><td class="p-2">${loan.user_name}</td><td class="p-2">${loanDate}</td><td class="p-2 text-red-600">${dueDate}</td><td class="p-2">${returnDate}</td></tr>`; }); }
+        window.onload = () => { checkLoginStatus(); };
     </script>
 </body>
 </html>
