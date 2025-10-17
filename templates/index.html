@@ -7,20 +7,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Noto Serif JP', serif;
-            background-color: #FDF8F0; /* 羊皮紙のような色 */
-        }
-        .bookshelf-bg {
-            background-image: url('https://www.transparenttextures.com/patterns/wood-pattern.png');
-            background-color: #8B4513; /* サドルブラウン */
-        }
-        .book {
-            transition: transform 0.2s ease-in-out;
-        }
-        .book:hover {
-            transform: translateY(-8px) scale(1.05);
-        }
+        body { font-family: 'Noto Serif JP', serif; background-color: #FDF8F0; }
+        .bookshelf-bg { background-image: url('https://www.transparenttextures.com/patterns/wood-pattern.png'); background-color: #8B4513; }
+        .book { transition: transform 0.2s ease-in-out; }
+        .book:hover { transform: translateY(-8px) scale(1.05); }
+        .modal { display: none; }
+        .modal.flex { display: flex; }
     </style>
 </head>
 <body class="text-gray-800">
@@ -28,19 +20,23 @@
     <div class="container mx-auto p-4 sm:p-8">
         
         <!-- ヘッダー -->
-        <header class="text-center mb-10">
+        <header class="text-center mb-6">
             <h1 class="text-4xl md:text-5xl font-bold text-amber-900 drop-shadow-lg">図書管理システム</h1>
             <p class="text-amber-700 mt-2">小さな図書室へようこそ</p>
         </header>
 
+        <!-- 認証・ユーザー情報エリア -->
+        <div id="auth-area" class="mb-6 p-4 bg-white/50 backdrop-blur-sm rounded-xl shadow-md flex justify-between items-center">
+            <!-- ログイン状態に応じて内容が変化 -->
+        </div>
+
         <!-- メインコンテンツ -->
         <main>
-            <!-- 操作パネル -->
-            <div class="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg mb-8 ring-1 ring-amber-200">
+            <!-- 操作パネル (ログイン時のみ表示) -->
+            <div id="control-panel" class="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg mb-8 ring-1 ring-amber-200 hidden">
                 <h2 class="text-2xl font-bold text-amber-800 mb-4 border-b-2 border-amber-300 pb-2">管理メニュー</h2>
                 <div class="flex flex-wrap gap-4">
                     <button onclick="openModal('addBookModal')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">新しい図書を登録</button>
-                    <button onclick="openModal('addUserModal')" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">新しい利用者を登録</button>
                     <button onclick="openLoanModal()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">図書を貸し出す</button>
                     <button onclick="openModal('loanHistoryModal'); fetchLoanHistory();" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">貸出履歴</button>
                 </div>
@@ -54,12 +50,40 @@
                 </div>
             </div>
         </main>
-
     </div>
 
-    <!-- モーダルウィンドウ -->
+    <!-- ===== モーダルウィンドウ ===== -->
+    <!-- ログインモーダル -->
+    <div id="loginModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4">
+        <div class="bg-white rounded-lg p-8 w-full max-w-md shadow-xl">
+            <h3 class="text-2xl font-bold mb-6">ログイン</h3>
+            <form id="loginForm">
+                <input type="text" id="loginName" placeholder="ユーザー名" class="w-full p-2 mb-4 border rounded" required>
+                <input type="password" id="loginPassword" placeholder="パスワード" class="w-full p-2 mb-4 border rounded" required>
+                <div class="flex justify-end gap-4">
+                    <button type="button" onclick="closeModal('loginModal')" class="bg-gray-300 hover:bg-gray-400 font-bold py-2 px-4 rounded">キャンセル</button>
+                    <button type="submit" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded">ログイン</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- 新規登録モーダル -->
+    <div id="registerModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4">
+        <div class="bg-white rounded-lg p-8 w-full max-w-md shadow-xl">
+            <h3 class="text-2xl font-bold mb-6">新規ユーザー登録</h3>
+            <form id="registerForm">
+                <input type="text" id="registerName" placeholder="ユーザー名" class="w-full p-2 mb-4 border rounded" required>
+                <input type="email" id="registerEmail" placeholder="メールアドレス (任意)" class="w-full p-2 mb-4 border rounded">
+                <input type="password" id="registerPassword" placeholder="パスワード" class="w-full p-2 mb-4 border rounded" required>
+                <div class="flex justify-end gap-4">
+                    <button type="button" onclick="closeModal('registerModal')" class="bg-gray-300 hover:bg-gray-400 font-bold py-2 px-4 rounded">キャンセル</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded">登録</button>
+                </div>
+            </form>
+        </div>
+    </div>
     <!-- 図書登録モーダル -->
-    <div id="addBookModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4">
+    <div id="addBookModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4">
         <div class="bg-white rounded-lg p-8 w-full max-w-md shadow-xl">
             <h3 class="text-2xl font-bold mb-6">新しい図書を登録</h3>
             <form id="addBookForm">
@@ -67,204 +91,208 @@
                 <input type="text" id="bookAuthor" placeholder="著者" class="w-full p-2 mb-4 border rounded" required>
                 <input type="text" id="bookIsbn" placeholder="ISBN (任意)" class="w-full p-2 mb-4 border rounded">
                 <div class="flex justify-end gap-4">
-                    <button type="button" onclick="closeModal('addBookModal')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">キャンセル</button>
+                    <button type="button" onclick="closeModal('addBookModal')" class="bg-gray-300 hover:bg-gray-400 font-bold py-2 px-4 rounded">キャンセル</button>
                     <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded">登録</button>
                 </div>
             </form>
         </div>
     </div>
-
-    <!-- 利用者登録モーダル -->
-    <div id="addUserModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4">
-        <div class="bg-white rounded-lg p-8 w-full max-w-md shadow-xl">
-            <h3 class="text-2xl font-bold mb-6">新しい利用者を登録</h3>
-            <form id="addUserForm">
-                <input type="text" id="userName" placeholder="氏名" class="w-full p-2 mb-4 border rounded" required>
-                <input type="email" id="userEmail" placeholder="メールアドレス (任意)" class="w-full p-2 mb-4 border rounded">
-                <div class="flex justify-end gap-4">
-                    <button type="button" onclick="closeModal('addUserModal')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">キャンセル</button>
-                    <button type="submit" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded">登録</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <!-- 貸出モーダル -->
-    <div id="loanModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4">
+    <div id="loanModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4">
         <div class="bg-white rounded-lg p-8 w-full max-w-md shadow-xl">
             <h3 class="text-2xl font-bold mb-6">図書を貸し出す</h3>
             <form id="loanForm">
-                <div class="mb-4">
+                <div class="mb-6">
                     <label for="loanBookId" class="block mb-2 font-bold">貸し出す本:</label>
                     <select id="loanBookId" class="w-full p-2 border rounded" required></select>
                 </div>
-                <div class="mb-6">
-                    <label for="loanUserId" class="block mb-2 font-bold">利用者:</label>
-                    <select id="loanUserId" class="w-full p-2 border rounded" required></select>
-                </div>
                 <div class="flex justify-end gap-4">
-                    <button type="button" onclick="closeModal('loanModal')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">キャンセル</button>
+                    <button type="button" onclick="closeModal('loanModal')" class="bg-gray-300 hover:bg-gray-400 font-bold py-2 px-4 rounded">キャンセル</button>
                     <button type="submit" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded">貸し出す</button>
                 </div>
             </form>
         </div>
     </div>
-    
     <!-- 貸出履歴モーダル -->
-    <div id="loanHistoryModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4">
+    <div id="loanHistoryModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4">
         <div class="bg-white rounded-lg p-8 w-full max-w-2xl shadow-xl h-[80vh] flex flex-col">
             <h3 class="text-2xl font-bold mb-6 flex-shrink-0">貸出履歴</h3>
             <div class="overflow-y-auto flex-grow">
-                <table class="w-full text-left">
-                    <thead class="bg-gray-100 sticky top-0">
-                        <tr>
-                            <th class="p-2">書籍名</th>
-                            <th class="p-2">利用者</th>
-                            <th class="p-2">貸出日</th>
-                            <th class="p-2">返却日</th>
-                        </tr>
-                    </thead>
-                    <tbody id="loanHistoryBody">
-                        <!-- 履歴データがここに挿入されます -->
-                    </tbody>
-                </table>
+                <table class="w-full text-left"><thead class="bg-gray-100 sticky top-0"><tr><th class="p-2">書籍名</th><th class="p-2">利用者</th><th class="p-2">貸出日</th><th class="p-2">返却日</th></tr></thead><tbody id="loanHistoryBody"></tbody></table>
             </div>
-            <div class="flex justify-end mt-6 flex-shrink-0">
-                <button type="button" onclick="closeModal('loanHistoryModal')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">閉じる</button>
-            </div>
+            <div class="flex justify-end mt-6 flex-shrink-0"><button type="button" onclick="closeModal('loanHistoryModal')" class="bg-gray-300 hover:bg-gray-400 font-bold py-2 px-4 rounded">閉じる</button></div>
         </div>
     </div>
 
     <script>
+        let currentUser = null;
+
         // --- モーダル制御 ---
-        function openModal(modalId) {
-            document.getElementById(modalId).classList.remove('hidden');
-            document.getElementById(modalId).classList.add('flex');
+        function openModal(modalId) { document.getElementById(modalId).classList.add('flex'); }
+        function closeModal(modalId) { document.getElementById(modalId).classList.remove('flex'); }
+
+        // --- UI更新 ---
+        function updateUI() {
+            const authArea = document.getElementById('auth-area');
+            const controlPanel = document.getElementById('control-panel');
+            if (currentUser) {
+                // ログイン時の表示
+                authArea.innerHTML = `
+                    <p class="font-semibold">ようこそ、<span class="text-sky-700">${currentUser.name}</span> さん</p>
+                    <button onclick="logout()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">ログアウト</button>
+                `;
+                controlPanel.style.display = 'block';
+            } else {
+                // ログアウト時の表示
+                authArea.innerHTML = `
+                    <p>機能をすべて利用するにはログインしてください。</p>
+                    <div class="flex gap-2">
+                        <button onclick="openModal('loginModal')" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg">ログイン</button>
+                        <button onclick="openModal('registerModal')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg">新規登録</button>
+                    </div>
+                `;
+                controlPanel.style.display = 'none';
+            }
+            fetchAndDisplayBooks(); // ログイン状態が変わったらボタン表示を更新するために再描画
         }
 
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.add('hidden');
-            document.getElementById(modalId).classList.remove('flex');
+        // --- 認証関連処理 ---
+        async function checkLoginStatus() {
+            const response = await fetch('/api/status');
+            const data = await response.json();
+            currentUser = data.logged_in ? data.user : null;
+            updateUI();
         }
 
-        // --- API通信とUI更新 ---
-        
-        // 図書一覧の表示
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            
+            const response = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, password })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                currentUser = data.user;
+                closeModal('registerModal');
+                e.target.reset();
+                updateUI();
+            } else { alert(`登録エラー: ${data.error}`); }
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('loginName').value;
+            const password = document.getElementById('loginPassword').value;
+
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, password })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                currentUser = data.user;
+                closeModal('loginModal');
+                e.target.reset();
+                updateUI();
+            } else { alert(`ログインエラー: ${data.error}`); }
+        });
+
+        async function logout() {
+            await fetch('/api/logout', { method: 'POST' });
+            currentUser = null;
+            updateUI();
+        }
+
+        // --- 図書・貸出関連処理 ---
         async function fetchAndDisplayBooks() {
             const response = await fetch('/api/books');
             const books = await response.json();
             const bookList = document.getElementById('book-list');
-            bookList.innerHTML = ''; // 一旦クリア
+            bookList.innerHTML = '';
 
             books.forEach(book => {
+                let buttonHtml = `<div class="mt-4 text-center text-green-600 font-bold text-sm py-1">貸出可</div>`;
+                if (book.is_loaned) {
+                    buttonHtml = `<button ${currentUser ? '' : 'disabled'} onclick="returnBook(${book.id})" class="mt-4 w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-2 rounded-md text-sm disabled:bg-gray-400 disabled:cursor-not-allowed">返却する</button>`;
+                }
+
                 const bookCard = `
-                    <div class="book bg-white p-4 rounded-lg shadow-md flex flex-col justify-between cursor-pointer">
+                    <div class="book bg-white p-4 rounded-lg shadow-md flex flex-col justify-between">
                         <div>
-                            <h4 class="font-bold text-lg truncate">${book.title}</h4>
-                            <p class="text-sm text-gray-600 truncate">${book.author}</p>
+                            <h4 class="font-bold text-lg truncate" title="${book.title}">${book.title}</h4>
+                            <p class="text-sm text-gray-600 truncate" title="${book.author}">${book.author}</p>
                         </div>
-                        ${
-                            book.is_loaned
-                            ? `<button onclick="returnBook(${book.id})" class="mt-4 w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-2 rounded-md text-sm">返却する</button>`
-                            : `<div class="mt-4 text-center text-green-600 font-bold text-sm py-1">貸出可</div>`
-                        }
-                    </div>
-                `;
+                        ${buttonHtml}
+                    </div>`;
                 bookList.innerHTML += bookCard;
             });
         }
 
-        // 図書登録フォームの処理
         document.getElementById('addBookForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const title = document.getElementById('bookTitle').value;
             const author = document.getElementById('bookAuthor').value;
             const isbn = document.getElementById('bookIsbn').value;
             
-            await fetch('/api/books', {
+            const response = await fetch('/api/books', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ title, author, isbn })
             });
-            
-            closeModal('addBookModal');
-            document.getElementById('addBookForm').reset();
-            fetchAndDisplayBooks();
-        });
 
-        // 利用者登録フォームの処理
-        document.getElementById('addUserForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const name = document.getElementById('userName').value;
-            const email = document.getElementById('userEmail').value;
-
-            await fetch('/api/users', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, email })
-            });
-
-            closeModal('addUserModal');
-            document.getElementById('addUserForm').reset();
-            alert('新しい利用者を登録しました。');
+            if (response.ok) {
+                closeModal('addBookModal');
+                e.target.reset();
+                await fetchAndDisplayBooks();
+            } else {
+                const data = await response.json();
+                alert(`登録エラー: ${data.error}`);
+            }
         });
         
-        // 貸出モーダルを開く処理
         async function openLoanModal() {
-            // 貸出可能な本を取得
             const bookRes = await fetch('/api/books');
             const books = await bookRes.json();
             const availableBooks = books.filter(b => !b.is_loaned);
             const bookSelect = document.getElementById('loanBookId');
             bookSelect.innerHTML = availableBooks.map(b => `<option value="${b.id}">${b.title}</option>`).join('');
-
-            // 利用者を取得
-            const userRes = await fetch('/api/users');
-            const users = await userRes.json();
-            const userSelect = document.getElementById('loanUserId');
-            userSelect.innerHTML = users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
-            
             openModal('loanModal');
         }
 
-        // 貸出フォームの処理
         document.getElementById('loanForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const book_id = document.getElementById('loanBookId').value;
-            const user_id = document.getElementById('loanUserId').value;
-            
             const response = await fetch('/api/loan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ book_id: parseInt(book_id), user_id: parseInt(user_id) })
+                body: JSON.stringify({ book_id: parseInt(book_id) })
             });
-
             if (response.ok) {
                 closeModal('loanModal');
-                fetchAndDisplayBooks();
+                await fetchAndDisplayBooks();
             } else {
                 const error = await response.json();
-                alert(`貸出に失敗しました: ${error.error}`);
+                alert(`貸出エラー: ${error.error}`);
             }
         });
 
-        // 返却処理
         async function returnBook(bookId) {
             if (!confirm('この本を返却しますか？')) return;
-            
-            const response = await fetch(`/api/return/${bookId}`, {
-                method: 'POST'
-            });
-
+            const response = await fetch(`/api/return/${bookId}`, { method: 'POST' });
             if (response.ok) {
-                fetchAndDisplayBooks();
+                await fetchAndDisplayBooks();
             } else {
                 const error = await response.json();
-                alert(`返却に失敗しました: ${error.error}`);
+                alert(`返却エラー: ${error.error}`);
             }
         }
         
-        // 貸出履歴の取得と表示
         async function fetchLoanHistory() {
             const response = await fetch('/api/loans');
             const loans = await response.json();
@@ -274,24 +302,15 @@
             loans.forEach(loan => {
                 const loanDate = new Date(loan.loan_date).toLocaleString('ja-JP');
                 const returnDate = loan.return_date ? new Date(loan.return_date).toLocaleString('ja-JP') : '貸出中';
-                const row = `
-                    <tr class="border-b">
-                        <td class="p-2">${loan.book_title}</td>
-                        <td class="p-2">${loan.user_name}</td>
-                        <td class="p-2">${loanDate}</td>
-                        <td class="p-2">${returnDate}</td>
-                    </tr>
-                `;
-                historyBody.innerHTML += row;
+                historyBody.innerHTML += `<tr class="border-b"><td class="p-2">${loan.book_title}</td><td class="p-2">${loan.user_name}</td><td class="p-2">${loanDate}</td><td class="p-2">${returnDate}</td></tr>`;
             });
         }
 
-
-        // ページ読み込み時に実行
+        // --- ページ読み込み時に実行 ---
         window.onload = () => {
-            fetchAndDisplayBooks();
+            checkLoginStatus();
         };
-
     </script>
 </body>
 </html>
+
