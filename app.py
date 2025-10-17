@@ -4,18 +4,29 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta, timezone
+import secrets
 
 app = Flask(__name__)
 
 # --- 基本設定 ---
-app.config['SECRET_KEY'] = os.urandom(24)
+# 環境変数から SECRET_KEY を取得、なければ生成（本番環境では環境変数を使用）
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 
 # --- データベース設定 ---
-db_path = os.path.join(os.path.dirname(__file__), 'library.db')
+# プロジェクトディレクトリにデータベースを作成
+db_dir = os.path.join(os.path.dirname(__file__), 'data')
+os.makedirs(db_dir, exist_ok=True)
+db_path = os.path.join(db_dir, 'library.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+
+# --- セッション設定（永続性確保） ---
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+app.config['SESSION_COOKIE_SECURE'] = False  # HTTPの場合はFalse、HTTPSの場合はTrue
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 # --- タイムゾーン設定 ---
 JST = timezone(timedelta(hours=9), 'JST')
@@ -23,22 +34,29 @@ JST = timezone(timedelta(hours=9), 'JST')
 # --- ログインマネージャー設定 ---
 login_manager = LoginManager()
 login_manager.init_app(app)
+login_manager.login_view = None  # AJAX対応のためリダイレクトなし
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- データベースモデル定義 (更新) ---
+# --- データベースモデル定義 ---
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False, unique=True)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(JST))
     
-    def set_password(self, password): self.password_hash = generate_password_hash(password)
-    def check_password(self, password): return check_password_hash(self.password_hash, password)
-    def to_dict(self): return {'id': self.id, 'name': self.name, 'email': self.email}
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+    
+    def to_dict(self):
+        return {'id': self.id, 'name': self.name, 'email': self.email}
 
 class Book(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -47,10 +65,9 @@ class Book(db.Model):
     isbn = db.Column(db.String(20), unique=True, nullable=True)
     is_loaned = db.Column(db.Boolean, default=False)
     borrower_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    # 登録者を記録する列を追加
     registered_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(JST))
     
-    # 登録者情報をリレーションシップで紐付け
     registered_by = db.relationship('User', foreign_keys=[registered_by_id])
 
     def to_dict(self):
@@ -61,7 +78,7 @@ class Book(db.Model):
             'isbn': self.isbn,
             'is_loaned': self.is_loaned,
             'borrower_id': self.borrower_id,
-            'registered_by_id': self.registered_by_id # フロントエンドに渡す
+            'registered_by_id': self.registered_by_id
         }
 
 class Loan(db.Model):
@@ -76,21 +93,42 @@ class Loan(db.Model):
     user = db.relationship('User', backref=db.backref('loans', lazy=True))
 
     def to_dict(self):
-        return { 'id': self.id, 'book_id': self.book_id, 'user_id': self.user_id, 'loan_date': self.loan_date.isoformat(), 'due_date': self.due_date.isoformat(), 'return_date': self.return_date.isoformat() if self.return_date else None, 'book_title': self.book.title if self.book else "削除された書籍", 'user_name': self.user.name }
+        return {
+            'id': self.id,
+            'book_id': self.book_id,
+            'user_id': self.user_id,
+            'loan_date': self.loan_date.isoformat(),
+            'due_date': self.due_date.isoformat(),
+            'return_date': self.return_date.isoformat() if self.return_date else None,
+            'book_title': self.book.title if self.book else "削除された書籍",
+            'user_name': self.user.name
+        }
 
 # --- APIエンドポイント ---
 @app.route('/')
-def index(): return render_template('index.html')
+def index():
+    return render_template('index.html')
 
-# --- 認証API (変更なし) ---
+# --- 認証API ---
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.json
-    if not data.get('email'): return jsonify({'error': 'メールアドレスは必須です'}), 400
-    if User.query.filter_by(name=data['name']).first(): return jsonify({'error': 'このユーザー名は既に使用されています'}), 400
-    if User.query.filter_by(email=data['email']).first(): return jsonify({'error': 'このメールアドレスは既に使用されています'}), 400
-    new_user = User(name=data['name'], email=data['email']); new_user.set_password(data['password'])
-    db.session.add(new_user); db.session.commit()
+    if not data.get('email'):
+        return jsonify({'error': 'メールアドレスは必須です'}), 400
+    if not data.get('name'):
+        return jsonify({'error': 'ユーザー名は必須です'}), 400
+    if not data.get('password'):
+        return jsonify({'error': 'パスワードは必須です'}), 400
+    
+    if User.query.filter_by(name=data['name']).first():
+        return jsonify({'error': 'このユーザー名は既に使用されています'}), 400
+    if User.query.filter_by(email=data['email']).first():
+        return jsonify({'error': 'このメールアドレスは既に使用されています'}), 400
+    
+    new_user = User(name=data['name'], email=data['email'])
+    new_user.set_password(data['password'])
+    db.session.add(new_user)
+    db.session.commit()
     login_user(new_user)
     return jsonify({'message': '登録が成功しました', 'user': new_user.to_dict()}), 201
 
@@ -105,14 +143,18 @@ def login():
 
 @app.route('/api/logout', methods=['POST'])
 @login_required
-def logout(): logout_user(); return jsonify({'message': 'ログアウト成功'})
+def logout():
+    logout_user()
+    return jsonify({'message': 'ログアウト成功'})
 
 @app.route('/api/status')
 def status():
-    if current_user.is_authenticated: return jsonify({'logged_in': True, 'user': current_user.to_dict()})
-    else: return jsonify({'logged_in': False})
+    if current_user.is_authenticated:
+        return jsonify({'logged_in': True, 'user': current_user.to_dict()})
+    else:
+        return jsonify({'logged_in': False})
 
-# --- 図書・貸出API (更新) ---
+# --- 図書・貸出API ---
 @app.route('/api/books', methods=['GET'])
 def get_books():
     books = Book.query.order_by(Book.title).all()
@@ -121,11 +163,20 @@ def get_books():
 @app.route('/api/books', methods=['POST'])
 @login_required
 def add_book():
-    data = request.json; isbn = data.get('isbn') if data.get('isbn') else None
-    if isbn and Book.query.filter_by(isbn=isbn).first(): return jsonify({'error': 'このISBNは既に使用されています'}), 400
-    # 登録者IDを記録
-    new_book = Book(title=data['title'], author=data['author'], isbn=isbn, registered_by_id=current_user.id)
-    db.session.add(new_book); db.session.commit()
+    data = request.json
+    isbn = data.get('isbn') if data.get('isbn') else None
+    
+    if isbn and Book.query.filter_by(isbn=isbn).first():
+        return jsonify({'error': 'このISBNは既に使用されています'}), 400
+    
+    new_book = Book(
+        title=data['title'],
+        author=data['author'],
+        isbn=isbn,
+        registered_by_id=current_user.id
+    )
+    db.session.add(new_book)
+    db.session.commit()
     return jsonify(new_book.to_dict()), 201
 
 @app.route('/api/books/<int:book_id>', methods=['PUT'])
@@ -134,6 +185,7 @@ def update_book(book_id):
     book = Book.query.get_or_404(book_id)
     if book.registered_by_id != current_user.id:
         return jsonify({'error': 'この図書を編集する権限がありません'}), 403
+    
     data = request.json
     book.title = data.get('title', book.title)
     book.author = data.get('author', book.author)
@@ -149,6 +201,7 @@ def delete_book(book_id):
         return jsonify({'error': 'この図書を削除する権限がありません'}), 403
     if book.is_loaned:
         return jsonify({'error': '貸出中の図書は削除できません'}), 400
+    
     db.session.delete(book)
     db.session.commit()
     return jsonify({'message': '図書を削除しました'})
@@ -161,26 +214,36 @@ def loan_book():
     if current_loans_count >= 3:
         return jsonify({'error': '貸出上限は3冊です。これ以上借りることはできません。'}), 400
 
-    data = request.json; book_id = data['book_id']
+    data = request.json
+    book_id = data['book_id']
     book = Book.query.get(book_id)
-    if not book or book.is_loaned: return jsonify({'error': 'この本は現在貸出できません'}), 400
+    if not book or book.is_loaned:
+        return jsonify({'error': 'この本は現在貸出できません'}), 400
     
-    now = datetime.now(JST); due_date = now + timedelta(weeks=2)
-    book.is_loaned = True; book.borrower_id = current_user.id
+    now = datetime.now(JST)
+    due_date = now + timedelta(weeks=2)
+    book.is_loaned = True
+    book.borrower_id = current_user.id
     new_loan = Loan(book_id=book.id, user_id=current_user.id, loan_date=now, due_date=due_date)
-    db.session.add(new_loan); db.session.commit()
+    db.session.add(new_loan)
+    db.session.commit()
     return jsonify(new_loan.to_dict()), 201
 
 @app.route('/api/return/<int:book_id>', methods=['POST'])
 @login_required
 def return_book(book_id):
     book = Book.query.get(book_id)
-    if not book or not book.is_loaned: return jsonify({'error': 'この本は貸出中ではありません'}), 400
-    loan = Loan.query.filter_by(book_id=book.id, return_date=None).first()
-    if not loan: return jsonify({'error': '貸出記録が見つかりません'}), 404
-    if loan.user_id != current_user.id: return jsonify({'error': 'この本を返却する権限がありません'}), 403
+    if not book or not book.is_loaned:
+        return jsonify({'error': 'この本は貸出中ではありません'}), 400
     
-    book.is_loaned = False; book.borrower_id = None
+    loan = Loan.query.filter_by(book_id=book.id, return_date=None).first()
+    if not loan:
+        return jsonify({'error': '貸出記録が見つかりません'}), 404
+    if loan.user_id != current_user.id:
+        return jsonify({'error': 'この本を返却する権限がありません'}), 403
+    
+    book.is_loaned = False
+    book.borrower_id = None
     loan.return_date = datetime.now(JST)
     db.session.commit()
     return jsonify(loan.to_dict())
@@ -191,9 +254,9 @@ def get_loans():
     loans = Loan.query.order_by(Loan.loan_date.desc()).all()
     return jsonify([loan.to_dict() for loan in loans])
 
+# --- データベース初期化 ---
 with app.app_context():
     db.create_all()
 
 if __name__ == '__main__':
     app.run(debug=True)
-
