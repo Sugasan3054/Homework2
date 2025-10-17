@@ -33,7 +33,8 @@ def load_user(user_id):
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False, unique=True)
-    email = db.Column(db.String(100), unique=True, nullable=True)
+    # メールアドレスを必須項目に変更
+    email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
 
     def set_password(self, password):
@@ -49,7 +50,6 @@ class Book(db.Model):
     author = db.Column(db.String(100), nullable=False)
     isbn = db.Column(db.String(20), unique=True, nullable=True)
     is_loaned = db.Column(db.Boolean, default=False)
-    # 誰が借りているかを記録する列を追加
     borrower_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
 
     def to_dict(self):
@@ -67,7 +67,6 @@ class Loan(db.Model):
     book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     loan_date = db.Column(db.DateTime, default=lambda: datetime.now(JST))
-    # 返却期限の列を追加
     due_date = db.Column(db.DateTime, nullable=False)
     return_date = db.Column(db.DateTime, nullable=True)
     
@@ -92,13 +91,19 @@ class Loan(db.Model):
 def index():
     return render_template('index.html')
 
-# --- 認証API (変更なし) ---
+# --- 認証API (更新) ---
 @app.route('/api/register', methods=['POST'])
 def register():
+    """新規ユーザー登録"""
     data = request.json
+    if not data.get('email'):
+        return jsonify({'error': 'メールアドレスは必須です'}), 400
     if User.query.filter_by(name=data['name']).first():
         return jsonify({'error': 'このユーザー名は既に使用されています'}), 400
-    new_user = User(name=data['name'], email=data.get('email'))
+    if User.query.filter_by(email=data['email']).first():
+        return jsonify({'error': 'このメールアドレスは既に使用されています'}), 400
+        
+    new_user = User(name=data['name'], email=data['email'])
     new_user.set_password(data['password'])
     db.session.add(new_user)
     db.session.commit()
@@ -107,12 +112,13 @@ def register():
 
 @app.route('/api/login', methods=['POST'])
 def login():
+    """ログイン処理 (メールアドレスを使用)"""
     data = request.json
-    user = User.query.filter_by(name=data['name']).first()
+    user = User.query.filter_by(email=data['email']).first()
     if user and user.check_password(data['password']):
         login_user(user)
         return jsonify({'message': 'ログイン成功', 'user': user.to_dict()})
-    return jsonify({'error': 'ユーザー名またはパスワードが無効です'}), 401
+    return jsonify({'error': 'メールアドレスまたはパスワードが無効です'}), 401
 
 @app.route('/api/logout', methods=['POST'])
 @login_required
@@ -127,7 +133,7 @@ def status():
     else:
         return jsonify({'logged_in': False})
 
-# --- 図書・貸出API (更新) ---
+# --- 図書・貸出API (変更なし) ---
 @app.route('/api/books', methods=['GET'])
 def get_books():
     books = Book.query.order_by(Book.title).all()
@@ -151,17 +157,12 @@ def loan_book():
     data = request.json
     book_id = data['book_id']
     book = Book.query.get(book_id)
-
     if not book or book.is_loaned:
         return jsonify({'error': 'この本は現在貸出できません'}), 400
-
-    # 貸出処理
     now = datetime.now(JST)
     due_date = now + timedelta(weeks=2)
-    
     book.is_loaned = True
     book.borrower_id = current_user.id
-    
     new_loan = Loan(book_id=book.id, user_id=current_user.id, loan_date=now, due_date=due_date)
     db.session.add(new_loan)
     db.session.commit()
@@ -173,16 +174,11 @@ def return_book(book_id):
     book = Book.query.get(book_id)
     if not book or not book.is_loaned:
         return jsonify({'error': 'この本は貸出中ではありません'}), 400
-
     loan = Loan.query.filter_by(book_id=book.id, return_date=None).first()
     if not loan:
         return jsonify({'error': '貸出記録が見つかりません'}), 404
-
-    # 借りた本人でない場合は返却できないようにする
     if loan.user_id != current_user.id:
         return jsonify({'error': 'この本を返却する権限がありません'}), 403
-
-    # 返却処理
     book.is_loaned = False
     book.borrower_id = None
     loan.return_date = datetime.now(JST)
@@ -190,12 +186,11 @@ def return_book(book_id):
     return jsonify(loan.to_dict())
 
 @app.route('/api/loans', methods=['GET'])
-@login_required # 貸出履歴はログインユーザーのみ
+@login_required
 def get_loans():
     loans = Loan.query.order_by(Loan.loan_date.desc()).all()
     return jsonify([loan.to_dict() for loan in loans])
 
-# アプリケーション起動時にデータベースを作成
 with app.app_context():
     db.create_all()
 
