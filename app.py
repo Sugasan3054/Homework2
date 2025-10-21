@@ -85,7 +85,13 @@ class Loan(db.Model):
 def index(): return render_template('index.html')
 
 # --- 認証API (変更なし) ---
-# ... (変更がないため省略) ...
+@app.route('/api/status')
+def status():
+    if current_user.is_authenticated:
+        return jsonify({'logged_in': True, 'user': current_user.to_dict()})
+    else:
+        return jsonify({'logged_in': False})
+
 
 # --- 図書・貸出API (更新) ---
 @app.route('/api/books', methods=['GET'])
